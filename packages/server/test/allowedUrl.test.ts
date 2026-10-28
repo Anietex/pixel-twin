@@ -48,3 +48,17 @@ test('allowedTarget gives the address to open: file links resolved to the real f
   expect(allowedTarget('http://localhost:5173/a?b=1', project)).toBe('http://localhost:5173/a?b=1');
   expect(allowedTarget('https://example.com', project)).toBeNull();
 });
+
+test('on Windows, a file address that names another computer is refused before any file is looked up', () => {
+  // Windows turns file://server/share into a network path, and looking it up may send the user's login hash to that computer.
+  const looked: string[] = [];
+  const windows = { windows: true, realpath: (p: string) => { looked.push(p); return p; } };
+  for (const url of ['file://server/share/page.html', 'file:////server/share/page.html', 'file://///server/share/page.html',
+    'file://server/C:/project/page.html']) expect(allowedTarget(url, 'C:\\project', windows)).toBeNull();
+  expect(looked).toEqual([]);
+
+  expect(allowedTarget('file:///C:/elsewhere/page.html', 'C:\\project', windows)).toBeNull();
+  expect(looked).not.toContain('C:\\elsewhere\\page.html');   // outside the project by its text alone: never looked up
+
+  expect(allowedTarget('file:///C:/project/page.html', 'C:\\project', windows)).toBe('file:///C:/project/page.html');
+});
