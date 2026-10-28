@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; font-family: Helvetica, Arial, sans-serif; }
+    section { padding: 24px; }
+    /* Hover moves width: the page lays out again every frame. */
+    .grow { display: inline-block; width: 120px; height: 44px; background: #25f; color: #fff; border: 0; transition: width 300ms ease; }
+    .grow:hover { width: 160px; }
+    /* A colour change, but slower and with another curve than Figma's. */
+    .link { color: #333; transition: color 200ms ease-in; }
+    .link:hover { color: #25f; }
+    /* One copy of the logos moved by half its width: the loop jumps back. It never stops for reduce motion. */
+    .strip { width: 400px; height: 40px; overflow: hidden; }
+    .track { display: flex; width: max-content; animation: slide 2s linear infinite; }
+    .logo { width: 150px; height: 40px; flex: none; }
+    @keyframes slide { to { transform: translateX(-300px); } }
+    /* Shown only by a script that skips visitors who ask for less motion. */
+    .reveal { opacity: 0; height: 200px; background: #eee; }
+    .reveal.shown { opacity: 1; transition: opacity 600ms; }
+    .tall { height: 800px; }
+    .late { height: 200px; background: #cde; }
+  </style>
+</head>
+<body>
+  <section id="motion" data-figma-id="1:1">
+    <button class="grow" data-figma-id="1:3">Get started</button>
+    <a class="link" href="#" data-figma-id="1:2">Read more</a>
+    <div class="strip" data-figma-id="1:4">
+      <div class="track">
+        <span class="logo" style="background:#f33"></span><span class="logo" style="background:#3f3"></span>
+        <span class="logo" style="background:#33f"></span><span class="logo" style="background:#fc3"></span>
+      </div>
+    </div>
+    <div class="tall"></div>
+    <div class="grower"></div>
+    <div class="late" data-figma-id="1:6"></div>
+    <div class="tall"></div>
+    <div class="reveal" data-figma-id="1:5"></div>
+  </section>
+  <script>
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      new IntersectionObserver((entries) => entries.forEach((e) => e.isIntersecting && e.target.classList.add('shown')))
+        .observe(document.querySelector('.reveal'));
+    }
+    // A box in view grows once the visitor has scrolled, pushing the box below it down: a layout shift.
+    let grown = false;
+    addEventListener('scroll', () => {
+      if (grown || scrollY < 500) return;
+      grown = true;
+      document.querySelector('.grower').style.height = '150px';
+    });
+  </script>
+</body>
+</html>

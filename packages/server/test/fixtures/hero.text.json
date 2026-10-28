@@ -1,0 +1,8 @@
+[
+  { "id": "1:2", "hasMissingFont": false, "fonts": [{ "family": "Helvetica", "style": "Bold", "weight": 700 }] },
+  { "id": "1:4", "hasMissingFont": false, "fonts": [{ "family": "Helvetica", "style": "Medium", "weight": 500 }] },
+  { "id": "1:9", "hasMissingFont": false, "fonts": [
+    { "family": "Helvetica", "style": "Regular", "weight": 400 },
+    { "family": "Helvetica", "style": "Bold", "weight": 700 }
+  ] }
+]

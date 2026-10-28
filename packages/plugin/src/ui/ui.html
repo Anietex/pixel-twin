@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 12px/1.4 Inter, system-ui, sans-serif; margin: 16px; color: #222; }
+</style>
+</head>
+<body>
+<p id="status">Waiting for Pixel Twin server… (is your coding agent open?)</p>
+<script>
+import { createUiBridge } from './bridge';
+import { RECONNECT_MS } from '@pixel-twin/shared';
+
+const statusEl = document.getElementById('status');
+const bridge = createUiBridge({
+  url: __PIXEL_TWIN_URL__,
+  reconnectMs: RECONNECT_MS,
+  WebSocketImpl: WebSocket,
+  postToMain: (msg) => parent.postMessage({ pluginMessage: msg }, '*'),
+  onStatus: (s, fileName) => {
+    statusEl.textContent = s === 'connected'
+      ? `Connected to Pixel Twin: "${fileName}"`
+      : s === 'introducing'
+        ? 'Telling Pixel Twin which file this is…'
+        : 'Waiting for Pixel Twin server… (is your coding agent open?)';
+  },
+});
+// Figma relays messages from the plugin's main code through its own frames, so the sender is not
+// always this window's parent. The bridge keeps only the first hello and well-formed responses.
+window.onmessage = (e) => {
+  const msg = e.data && e.data.pluginMessage;
+  if (msg) bridge.fromMain(msg);
+};
+// Main code may post its hello before this window is listening, so ask for it again now.
+parent.postMessage({ pluginMessage: { type: 'ui-ready' } }, '*');
+</script>
+</body>
+</html>

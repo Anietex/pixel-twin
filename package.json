@@ -1,0 +1,44 @@
+{
+  "name": "pixel-twin",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lets your AI coding agent build web page sections that match a Figma design exactly, and check them in a browser.",
+  "license": "MIT",
+  "author": "Aniefon Umanah",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Anietex/pixel-twin.git"
+  },
+  "homepage": "https://github.com/Anietex/pixel-twin#readme",
+  "bugs": {
+    "url": "https://github.com/Anietex/pixel-twin/issues"
+  },
+  "keywords": [
+    "figma",
+    "mcp",
+    "model-context-protocol",
+    "design-to-code",
+    "claude-code",
+    "ai-agent",
+    "pixel-perfect",
+    "visual-testing"
+  ],
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc -p packages/shared && tsc -p packages/server && tsc -p packages/plugin",
+    "build": "node packages/plugin/build.mjs && node packages/server/build.mjs",
+    "setup": "node scripts/setup.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  }
+}

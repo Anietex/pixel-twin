@@ -1,0 +1,15 @@
+{
+  "name": "@pixel-twin/plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@pixel-twin/shared": "*"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.142.0",
+    "@types/ws": "^8.18.2",
+    "esbuild": "^0.28.2",
+    "ws": "^8.22.0"
+  }
+}
