@@ -116,17 +116,22 @@ Some tools take a minute or two, such as exporting large pictures or checking a 
    - On screens narrower than the design, should the layout reflow, or should the whole design shrink to fit?
    - How much should the page move when the design has no motion: none, subtle or expressive?
    It saves your answers in `pixel-twin.json` in your project, with the address of your development server, the breakpoints and the image folder.
-4. The agent reads the design, builds the sections in your app's own framework (or React for a new project), checks them and fixes the differences.
+4. The agent reads the design, builds the sections in your app's own framework (or React for a new project), checks them and fixes the differences. For two or more sections, it first sets up the shared colours, fonts and spacing. Then it builds one section at a time, each with its own sub-agent (a helper agent with a fresh context), where your agent supports them.
 5. Read the agent's report. It lists:
    - the sections built and the files changed;
    - the widths checked;
    - anything it couldn't match, and why;
    - the phone, tablet and motion choices it made;
    - the quality findings for you to decide on;
-   - the results of your project's lint, type check, tests and build.
+   - the results of your project's lint, type check, tests and build;
+   - what it cleaned up.
    Watch the video it recorded to judge the motion.
 
 The agent matches the design exactly unless you ask for a change.
+
+The agent keeps its working files (pictures, saved replies, its own screenshots and scripts) in `.pixel-twin/` in your project, and deletes them when it finishes. It keeps the videos and a small memory of each section's checks. Pixel Twin also deletes working files older than a day each time it starts.
+
+While it builds several sections, the agent keeps a plan in `.pixel-twin/plan.md`: the shared files, the shared components, and what each section has built. If a session stops part-way, ask a new session to carry on from the plan.
 
 ### Files you can only view
 
@@ -135,6 +140,18 @@ Figma runs plugins only in files you can edit. If you can only view a design, ma
 ### Several agents at once
 
 Several agent sessions can use Pixel Twin at the same time, in one agent or in different ones. The first session holds the connection to Figma, and the others share it. When the first one closes, another takes over within a few seconds, and the plugin reconnects by itself.
+
+### Token use
+
+Each step an agent takes re-reads everything its session has seen so far, so a long session costs more with every step. Pixel Twin keeps sessions short in two ways:
+
+- Its replies are short. A whole page is sent as a list of its sections to read one at a time, not as one large reply.
+- For two or more sections, the agent gives each section to its own sub-agent, one at a time. Each sub-agent starts with a fresh context, and the main agent reads only its short report. Claude Code and OpenCode support sub-agents.
+
+To keep the cost down further:
+
+1. With an agent that has no sub-agents, build two or three sections per session, then start a new session for the next ones. Pixel Twin remembers each section's checks between sessions.
+2. Use a lower thinking effort, or a smaller model, when the work is mostly fixing small differences.
 
 ## The tools
 
@@ -154,6 +171,7 @@ Several agent sessions can use Pixel Twin at the same time, in one agent or in d
 | `check_motion` | Checks the page's animations: smoothness, "reduce motion", layout jumps and the designer's timings |
 | `record` | Records a short video of the page moving |
 | `check_quality` | Reports text contrast, alt text, headings, image weight and loading, unsafe links, scripts in SVGs, font loading, and script and style size |
+| `clean_up` | Deletes Pixel Twin's working files when the work is done: pictures, saved replies and the agent's own scratch files. Keeps the videos and the memory of each section's checks |
 
 ## Security and privacy
 

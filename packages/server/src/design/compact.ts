@@ -169,3 +169,32 @@ export function formatCompact(section: SectionData, hints: LayoutHint[], styles:
   }
   return lines.join('\n');
 }
+
+/**
+ * For a section too big to read at once: its own layer, its parts (the direct children, top to bottom) to
+ * read one at a time, and the styles, fonts and variables used anywhere in it, each listed once.
+ */
+export function formatOverview(section: SectionData, styles: LinkedStyle[], tokens: number): string {
+  const parts = [...section.root.children].sort((a, b) => a.y - b.y || a.x - b.x);
+  const lines = [
+    `Section ${quote(section.name)} ${clean(section.rootId)}, ${n(section.width)}×${n(section.height)}, is too big to read at once (about ${tokens} tokens).`,
+    'Read its parts one at a time with get_section, and build each part before you read the next. Names are in quotes, cut after 80 characters.',
+    '',
+    'Its own layer (fields separated by " | "):',
+    line(section.root),
+    ...motionLines(section.root).map((m) => `- ${m}`),
+    '',
+    `Parts, top to bottom (${parts.length}):`,
+    ...parts.map((l) => `- ${quote(l.name)} ${clean(l.id)} ${clean(l.type)} ${n(l.x)},${n(l.y)} ${n(l.width)}×${n(l.height)}`),
+  ];
+  const styleNames = [...new Set(styles.map((s) => `- ${clean(s.kind)}: ${name(s.name)}`))];
+  if (styleNames.length) lines.push('', 'Styles used:', ...styleNames);
+  if (section.fonts.length) {
+    lines.push('', 'Fonts:');
+    for (const f of section.fonts) lines.push(`- ${clean(f.family)} ${clean(f.style)} (${f.weight})${f.missingInFigma ? ' MISSING IN FIGMA' : ''}`);
+  }
+  const variables = [...new Set(section.variables.map((v) => `- ${name(`${v.collectionName}/${v.variableName}`)} = ${JSON.stringify(v.value)}`))];
+  if (variables.length) lines.push('', 'Variables used:', ...variables);
+  if (section.warnings.length) lines.push('', `${section.warnings.length} warnings: get_section lists them with each part.`);
+  return lines.join('\n');
+}

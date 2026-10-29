@@ -3,6 +3,7 @@ import { HOSTS, PORT, REQUEST_TIMEOUT_MS } from '@pixel-twin/shared';
 import { createBrowserProvider } from './browser/launch';
 import { createPixelTwinServer, type ServerDeps } from './createServer';
 import { SharedBridge } from './sharedBridge';
+import { cleanWorkFiles, STALE_AFTER_MS } from './workFiles';
 
 // PIXEL_TWIN_PORT is for tests only: the plugin is built to use PORT, so a different port can't reach it.
 const port = Number(process.env.PIXEL_TWIN_PORT) || PORT;
@@ -18,6 +19,9 @@ const deps: ServerDeps = {
   browser,
 };
 serveStdio(() => createPixelTwinServer(deps));
+
+// Working files left by earlier sessions are no longer needed. Videos, compare's memory and an unfinished plan stay.
+void cleanWorkFiles(deps.workDir, { keepVideos: true, keepPlan: true, olderThan: Date.now() - STALE_AFTER_MS }).catch(() => undefined);
 
 // Stop when the session ends, so the next session can use the port and no browser is left running.
 const shutdown = () => void Promise.allSettled([bridge.stop(), browser.close()]).finally(() => process.exit(0));

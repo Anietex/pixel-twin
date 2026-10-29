@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -98,11 +98,27 @@ test('get_section with no running plugin explains how to start it', async () => 
   expect(text(r)).toContain('Plugins → Development → Pixel Twin');
 });
 
-test('get_section sends a big result to a file', async () => {
-  await startHero({ ...rest, document: { ...rest.document, name: 'x'.repeat(100_000) } });
+test('get_section sends a big layer with no parts to a file', async () => {
+  await startHero({ ...rest, document: { ...rest.document, name: 'x'.repeat(100_000), children: [] } });
   const r = await client.callTool({ name: 'get_section', arguments: { link: `${LINK}?node-id=1-1`, format: 'json' } });
   expect(text(r)).toMatch(/Full result saved to .*\.pixel-twin\/section-1-1-\d+\.json/);
   expect(text(r)).toContain('layers');
+});
+
+test('a section too big to read at once gets an overview of its parts, top to bottom, instead of a file', async () => {
+  const children = rest.document.children.map((c: any) => (c.id === '1:3' ? { ...c, name: 'y'.repeat(100_000) } : c));
+  await startHero({ ...rest, document: { ...rest.document, children } });
+  for (const format of ['compact', 'json']) {
+    const body = text(await client.callTool({ name: 'get_section', arguments: { link: `${LINK}?node-id=1-1`, format } }));
+    expect(body).toMatch(/^Section "Hero" 1:1, .* is too big to read at once \(about \d+ tokens\)\./);
+    expect(body).toContain('Read its parts one at a time with get_section');
+    const parts = body.split('\n').filter((l) => /^- ".*" \d+:\d+ [A-Z]+ /.test(l)).map((l) => l.split(' ')[2]);
+    expect(parts).toEqual(['1:2', '1:5', '1:9', '1:3', '1:6']);   // by y, then x; the hidden layer is left out
+    expect(body).toContain(`"${'y'.repeat(80)}…"`);
+    expect(body).toContain('- fill: "Brand/Primary"');
+    expect(body.length).toBeLessThan(3000);
+  }
+  expect(existsSync(path.join(workDir, '.pixel-twin'))).toBe(false);
 });
 
 test('get_outline without a node lists pages', async () => {

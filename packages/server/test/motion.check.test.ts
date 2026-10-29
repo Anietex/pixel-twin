@@ -6,6 +6,7 @@ import path from 'node:path';
 import { createBrowserProvider, type BrowserProvider } from '../src/browser/launch';
 import { checkMotion, normalEasing, type MotionReport } from '../src/motion/checkMotion';
 import { recordPage } from '../src/motion/record';
+import { compactAnimations } from '../src/tools/motion';
 
 const fixtures = path.join(__dirname, 'fixtures');
 let site: Server;
@@ -84,3 +85,18 @@ test('record saves a video of the page', async () => {
   expect(r.hovered).toBe(2);
   expect((await stat(outFile)).size).toBeGreaterThan(1000);
 }, 60_000);
+
+test('the reply joins animations that differ only in the property they move, and leaves out empty fields', () => {
+  const fade = { element: '[data-figma-id="1:2"]', layerId: '1:2', kind: 'transition', name: null, property: 'opacity', durationMs: 600,
+    delayMs: 0, easing: 'ease', iterations: 1, phase: 'load', hovered: null } as const;
+  const shared = { kind: 'transition', durationMs: 600, delayMs: 0, easing: 'ease', iterations: 1 };
+  expect(compactAnimations([
+    fade, { ...fade, property: 'transform' }, { ...fade, property: 'opacity' },
+    { ...fade, property: 'color', phase: 'hover', hovered: '1:2' },
+    { ...fade, element: 'section', layerId: '1:1' },
+  ])).toEqual([
+    { ...shared, element: '[data-figma-id="1:2"]', property: 'opacity, transform', phase: 'load' },
+    { ...shared, element: '[data-figma-id="1:2"]', property: 'color', phase: 'hover', hovered: '1:2' },
+    { ...shared, element: 'section', layerId: '1:1', property: 'opacity', phase: 'load' },
+  ]);
+});

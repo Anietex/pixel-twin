@@ -5,7 +5,7 @@ import { isAllowedUrl } from '../browser/allowedUrl';
 import type { ServerDeps } from '../createServer';
 import { easingCss } from '../design/motion';
 import type { Layer } from '../design/types';
-import { checkMotion, type ExpectedHover } from '../motion/checkMotion';
+import { type AnimationRecord, checkMotion, type ExpectedHover } from '../motion/checkMotion';
 import { recordPage } from '../motion/record';
 import { fitReply } from '../reply';
 import { safeName } from '../safeName';
@@ -30,6 +30,33 @@ export function expectedHovers(root: Layer): ExpectedHover[] {
   return out;
 }
 
+/** An animation as the reply shows it: fields with no value, and a layer id the element already names, are left out. */
+type ShownAnimation = Partial<AnimationRecord>;
+
+/**
+ * Shortens the animation list for the reply: animations that differ only in the property they move become one,
+ * with the properties joined, such as "opacity, transform".
+ */
+export function compactAnimations(records: AnimationRecord[]): ShownAnimation[] {
+  const groups = new Map<string, { record: AnimationRecord; properties: string[] }>();
+  for (const r of records) {
+    const key = JSON.stringify({ ...r, property: null });
+    const group = groups.get(key);
+    if (group) {
+      if (!group.properties.includes(r.property)) group.properties.push(r.property);
+    } else {
+      groups.set(key, { record: r, properties: [r.property] });
+    }
+  }
+  return [...groups.values()].map(({ record, properties }) => {
+    const shown: ShownAnimation = { ...record, property: properties.join(', ') };
+    if (record.layerId === null || record.element === `[data-figma-id="${record.layerId}"]`) delete shown.layerId;
+    if (record.name === null) delete shown.name;
+    if (record.hovered === null) delete shown.hovered;
+    return shown;
+  });
+}
+
 export function registerMotion(server: McpServer, deps: ServerDeps): void {
   server.registerTool(
     'check_motion',
@@ -51,7 +78,7 @@ export function registerMotion(server: McpServer, deps: ServerDeps): void {
           url: address, scope: selector ?? 'body', width: width ?? section?.width ?? DEFAULT_WIDTH,
           expected: section ? expectedHovers(section.root) : [], isAllowed: (u) => isAllowedUrl(u, deps.workDir),
         });
-        return await fitReply(report, {
+        return await fitReply({ ...report, animations: compactAnimations(report.animations) }, {
           workDir: deps.workDir, label: 'motion',
           summary: `${report.problems.length} motion problems, ${report.warnings.length} warnings, ${report.animations.length} animations recorded, ${report.hovered} elements hovered`,
         });
@@ -66,7 +93,7 @@ export function registerMotion(server: McpServer, deps: ServerDeps): void {
     {
       description:
         'Records a short video (.webm) of the built page with motion allowed: the first screen loading, a smooth scroll to the bottom and back, '
-        + 'and the mouse over the main links and buttons. Saves it in .pixel-twin/record/ for the owner to judge the feel before approving.',
+        + 'and the mouse over the main links and buttons. Saves it in .pixel-twin/record/ for the owner to judge the feel before approving. A new video of the same section and width replaces the old one.',
       inputSchema: z.object(PAGE_CHECK_INPUTS),
       annotations: { readOnlyHint: false },
     },
@@ -75,7 +102,7 @@ export function registerMotion(server: McpServer, deps: ServerDeps): void {
         const { address } = await pageTarget(deps, url);
         const section = await linkedSection(deps, link, nodeId);
         const w = width ?? section?.width ?? DEFAULT_WIDTH;
-        const outFile = path.join(deps.workDir, '.pixel-twin', 'record', `${safeName(section?.name ?? 'page')}-${w}-${Date.now()}.webm`);
+        const outFile = path.join(deps.workDir, '.pixel-twin', 'record', `${safeName(section?.name ?? 'page')}-${w}.webm`);
         const r = await recordPage(deps.browser, { url: address, width: w, scope: selector ?? 'body', outFile, isAllowed: (u) => isAllowedUrl(u, deps.workDir) });
         return { content: [{ type: 'text', text: `Saved a ${r.seconds}-second video at ${w} px (${r.hovered} hovers) to ${r.file}. Ask the owner to watch it.` }] };
       } catch (err) {

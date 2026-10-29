@@ -1,6 +1,6 @@
 ---
 name: pixel-twin
-description: Build page sections from a Figma link so they match the design exactly, using the Pixel Twin MCP tools (status, get_outline, get_selection, get_section, get_screenshot, export_assets, get_fonts, find_mobile_version, compare, compare_page, check_responsive, check_motion, record, check_quality). Use whenever the owner gives a Figma link, or points at the sections selected in Figma, and asks to build, code, implement or replicate one or more sections or a page.
+description: Build page sections from a Figma link so they match the design exactly, using the Pixel Twin MCP tools (status, get_outline, get_selection, get_section, get_screenshot, export_assets, get_fonts, find_mobile_version, compare, compare_page, check_responsive, check_motion, record, check_quality, clean_up). Use whenever the owner gives a Figma link, or points at the sections selected in Figma, and asks to build, code, implement or replicate one or more sections or a page.
 ---
 
 # Pixel Twin: build Figma sections that match exactly
@@ -46,7 +46,10 @@ The owner's rule is strict: **everything must match, unless the owner asked for 
    - Forms don't send anything. Tabs and switches show only the state the design shows, unless the design has interactions for them.
    - If a browser tool such as the Playwright plugin is available, use it to click the phone menu button and confirm the menu opens and closes. Use the Pixel Twin tools for matching, not the browser tool.
    - Show the design's own text, numbers and images. Don't connect sections to the app's data or translation files unless the owner asks; list in the report where real content could go.
-8. **Ignore folder.** Add `.pixel-twin/` to the project's `.gitignore`. Pixel Twin saves screenshots, videos and large replies there.
+8. **Working files.**
+   - Add `.pixel-twin/` to the project's `.gitignore`. Pixel Twin keeps its working files there: pictures, videos and large replies.
+   - Put your own working files in `.pixel-twin/scratch/`: screenshots, scripts, notes and logs. Never save them in the project folder or its root.
+   - When you finish, delete every file you made that isn't part of the build, including files another tool saved in the project for you (such as the Playwright plugin's `.playwright-mcp/` folder). Then call `clean_up`, unless you are a section builder (see "Section builder").
 9. **Match loop.**
    - Run `compare` with `reset: true` for the first round of each section and width.
    - Fix every item in `differences` and `unmapped`. A layer you built without its own element on purpose goes in `explained`, with the reason. Explanations are remembered for that section, so send each one once.
@@ -98,7 +101,7 @@ The owner's rule is strict: **everything must match, unless the owner asked for 
       - Report contrast findings to the owner. Never change the design's colours for them unless the owner asks.
       - Build the app for production, start its preview server (for Vite: `npm run build`, then `npm run preview`), and run `check_quality` again with `url` set to the preview address. Fix every `heavy-code` and `heavy-image` finding.
       - Run the project's own lint, type check, tests and build. Fix every error and warning your changes caused. Report the ones that were there before you started, without fixing them.
-13. **Final report.** List these things:
+13. **Final report.** A section builder sends the short report in "Section builder" instead. Otherwise, list these things:
     - the sections built
     - the files changed
     - the widths checked
@@ -107,9 +110,17 @@ The owner's rule is strict: **everything must match, unless the owner asked for 
     - every motion choice you made: what moves, how long, which curve, and whether it came from the design, a hint the owner approved, or the house style
     - the `check_quality` findings you did not fix, the script and style KB on the production preview, and the video path from `record`
     - the results of the project's lint, type check, tests and build, and any errors that were there before you started
+    - what `clean_up` deleted and kept
 14. **Scope.** Change nothing beyond the design unless the owner asks. The only exceptions are phone and tablet layouts that have no design, and motion from the house style. Changes the owner asks for override the match.
+15. **Keep your context small.** Everything you read stays in your context for the rest of the session, and makes every later step cost more.
+    - For two or more sections, give each one to its own sub-agent (see "Whole page and several sections").
+    - Read one section at a time with `get_section`, not the whole page.
+    - When a reply is saved to a file, search the file for the part you need instead of reading all of it.
+    - Look at a picture again only when it has changed.
 
 ## Steps
+
+These steps build one section. For two or more sections, such as a whole page, follow "Whole page and several sections" below: it uses these steps too.
 
 1. Read the link to get the file and the `node-id`. If the owner points at what they selected in Figma instead, call `get_selection` and use its links (rule 0).
 2. Call `status` to check the file is open with the plugin running. If it isn't, ask the owner to open the file in the Figma desktop app and run **Plugins → Development → Pixel Twin**.
@@ -125,14 +136,15 @@ The owner's rule is strict: **everything must match, unless the owner asked for 
 7. Plan the rows, columns and grids. For layers placed at fixed spots, use the layout hints.
 8. Build the still section (rules 2–7).
 9. Start the app's development server if it isn't running. The checking tools only open pages on `localhost` or files inside the project.
-10. Run `compare` at the desktop width, and at the mobile width if there is a mobile design. Fix and repeat (rule 9). For a whole page, see "Whole page" below.
+10. Run `compare` at the desktop width, and at the mobile width if there is a mobile design. Fix and repeat (rule 9).
 11. Run `check_responsive`. Fix every problem.
 12. Add the motion (rule 11). Run `compare` with `state` for each designed state, then `check_motion`. Fix every problem.
 13. Run `compare` again to confirm the desktop build still matches.
 14. Run `check_quality` on the development server, then on the production preview. Fix what doesn't change the look (rule 12).
 15. Run the project's lint, type check, tests and build. Fix every error your changes caused.
 16. Run `record`.
-17. Report (rule 13).
+17. Delete your own working files, then call `clean_up` (rule 8).
+18. Report (rule 13).
 
 ## Reading the replies
 
@@ -143,6 +155,8 @@ Lists each selected layer: its name, type and size, the layers above it, and a l
 ### get_section
 
 By default it replies in a compact form: one line per visible layer, indented by depth, then the full text, layout hints, motion, motion hints, styles, fonts, variables and warnings. Names and text are in quotes. A layer line cuts text after 80 characters; the "Full text" part gives every text that was cut, and every text with a line break, in full (`\n` is a line break). Ask for `format: "json"` when you need every field as JSON (`{ section, hints, styles, motionHints }`).
+
+A section too big to read at once, such as a whole page, gets an overview instead: its own layer, its parts from top to bottom with their node ids, and the styles, fonts and variables used anywhere in it. Call `get_section` on each part when you build it.
 
 - Positions are relative to the section's top-left corner.
 - **Images:** an image moved or cropped inside its layer has a `crop` and ready `css` (`backgroundSize`, `backgroundPosition`) that show the same part. Filter values (exposure, saturation and so on) and image rotation are listed too.
@@ -234,7 +248,7 @@ The kinds are:
 
 ### check_motion
 
-Give the link with the section's node id, so it can check the designer's hover timings. Returns every animation it saw (element, property, duration, delay, easing, and whether it ran on load, hover or scroll), the scroll's layout shift and frame times, and `problems`:
+Give the link with the section's node id, so it can check the designer's hover timings. Returns every animation it saw (element, property, duration, delay, easing, and whether it ran on load, hover or scroll; animations that differ only in property are one entry, such as `"opacity, transform"`), the scroll's layout shift and frame times, and `problems`:
 
 - `layout-property`: something animates width, height, top, left, margin or padding. Use transform or opacity.
 - `moves-with-reduced-motion`: something still moves when the visitor asks for less motion.
@@ -248,7 +262,11 @@ Give the link with the section's node id, so it can check the designer's hover t
 
 ### record
 
-Saves a video of the page: the first screen, a smooth scroll to the bottom and back, and the mouse over the main links and buttons. Give the path to the owner to watch.
+Saves a video of the page: the first screen, a smooth scroll to the bottom and back, and the mouse over the main links and buttons. Give the path to the owner to watch. A new video of the same section and width replaces the old one.
+
+### clean_up
+
+Deletes Pixel Twin's working files in `.pixel-twin/`, and your own files in `.pixel-twin/scratch/`. It keeps compare's memory (`history.json` and `explained.json`) and the videos from `record`, unless you pass `keepVideos: false`. It also deletes the plan, so call it only when the whole build is done, and never as a section builder. It never touches the build, the exported assets, the fonts or `pixel-twin.json`. Pixel Twin also deletes working files older than a day each time it starts, except the plan.
 
 ### check_quality
 
@@ -300,16 +318,90 @@ The owner picks the level once (rule 1). Each level is a fixed set of numbers, s
 - A seamless marquee repeats its items once and moves by exactly one copy's width (`translateX(-50%)`).
 - Build the still page first, so it passes `compare`, then add motion.
 
-## Whole page
+## Whole page and several sections
 
-When the owner asks for a whole page:
+When you build two or more sections, such as a whole page, split the work. You set up the shared parts. Then a sub-agent (a helper agent that starts with a fresh, empty context) builds each section, one at a time. Each sub-agent's steps stay cheap, and your own context holds only their short reports.
 
-1. Build the shared parts first: fonts, colours and spacing tokens, the header and the footer.
-2. Build the sections from top to bottom. While fixing one section, run `compare` on it alone.
-3. When every section is built, run `compare_page` once with the page frame's link to see the whole page in one table.
-4. Run `check_responsive` on each section.
-5. Run `check_motion`, `check_quality` and `record` once for the page.
-6. Report per section (rule 13).
+If your agent can't start sub-agents, build the sections yourself, one at a time, in the same order and with the same plan file.
+
+### Set up the shared parts
+
+1. Do steps 1 to 5. Start the app's development server.
+2. Call `get_section` on the page frame that holds the sections. A whole page is too big to read at once, so the reply is an overview: the parts in order, and every style, font and variable the page uses.
+3. Call `get_fonts` with the page frame's link, and copy the fonts into the project (rule 5).
+4. Create the shared files:
+   - the design tokens: colours, font sizes, spacing and corner radii as CSS variables, named after the Figma styles and variables (rule 12);
+   - the global styles and the font loading;
+   - the page file, where each section goes in Figma's order.
+5. Write the plan file, `.pixel-twin/plan.md` (see "The plan file").
+
+### Build the sections
+
+6. Start one sub-agent per section, from top to bottom. Start the next one only after the last one has reported. They share the tokens file and the page file, and two at once would overwrite each other's changes.
+7. Give each sub-agent this brief, and nothing more:
+
+   ```
+   Build one section with Pixel Twin, as a section builder.
+   Read the Pixel Twin skill and follow it, including "Section builder": <the path of this SKILL.md file>
+   Section: "<layer name>" <link with node-id>
+   Plan: .pixel-twin/plan.md
+   ```
+
+8. Read each report, and collect the questions for the owner.
+
+### Finish
+
+9. Ask the owner the questions. Send each answer to a new sub-agent for that section, with the brief and the answer.
+10. Run `compare_page` once with the page frame's link. Send each section that fails back to a sub-agent, with its row.
+11. Run `check_motion` for the page, then `check_quality` (rule 12), then the project's lint, type check, tests and build. Fix what they find yourself, or send it to a sub-agent for that section.
+12. Run `record`. Delete your own working files, then call `clean_up` (rule 8).
+13. Report per section (rule 13), from the sub-agents' reports and your own checks.
+
+### The plan file
+
+The plan is how you and the sub-agents share what has been made. Every sub-agent reads it before it starts and updates it before it reports. A new session can also read it to carry on where an earlier one stopped. Keep it short, in this form:
+
+```markdown
+# Pixel Twin plan
+Page: <page frame link>
+Tokens: src/styles/tokens.css
+Global styles: src/styles/global.css
+Fonts: public/fonts, loaded in src/styles/fonts.css
+Page file: src/App.tsx (sections in Figma order)
+
+## Shared components
+- Button: src/components/Button.tsx, from the Figma component "Button"; variants primary and secondary
+
+## Sections, top to bottom
+- [x] "Nav" 5295:3042 <link>: src/sections/Nav.tsx; compare passes at 1920 and 390 px
+- [ ] "Hero" 5295:3063 <link>
+
+## Added along the way
+- --colour-promo: #F5E9DA (no Figma style; first used in "Hero")
+
+## Questions for the owner
+- "Hero": the "Logos" row looks like a marquee (high confidence). Build it?
+```
+
+### Section builder
+
+When your brief says you are a section builder, you build one section of a larger build:
+
+1. Read the plan and the tokens file before you write anything.
+2. Do steps 6 to 12 for your section only: read it, build it, run `compare` at the desktop width and at the mobile design's width, run `check_responsive` on it, then build its motion and check it with `compare` and `state`, and with `check_motion`.
+3. Use the tokens for every colour, font size, spacing and radius. If the tokens file has no token for a value, add one, and list it in the plan under "Added along the way". An earlier section may have added it already, so search the file for the value first.
+4. Reuse the shared components in the plan. If your section needs one to look different, add a variant and keep its existing look: other sections already match with it. List any new component another section could use.
+5. Change only these files: your section's own files, the tokens file, a shared component (only to add a variant) and the page file (only to put your section in its place).
+6. You can't ask the owner. Where this skill says to ask, leave that part out, finish the rest, and put the question in your report and in the plan.
+7. Don't run `compare_page`, `check_quality`, `record`, `clean_up` or the project's build. The main agent runs them once, at the end.
+8. Update your section's line in the plan, and delete your own working files.
+9. Reply with a short report of no more than 300 words. List:
+   - the files changed and the widths checked;
+   - whether compare passes, and every remaining difference: layer, property, design value, build value and reason;
+   - your phone, tablet and motion choices;
+   - your questions for the owner.
+
+   Don't paste tool replies into the report.
 
 ## Known browser limits
 

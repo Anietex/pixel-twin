@@ -7,7 +7,7 @@ const readme = readFileSync(path.join(repo, 'README.md'), 'utf8');
 
 test('the skill names every tool and the stop rule', () => {
   for (const t of ['status', 'get_outline', 'get_selection', 'get_section', 'get_screenshot', 'export_assets', 'get_fonts', 'find_mobile_version', 'compare', 'compare_page',
-    'check_responsive', 'check_motion', 'record', 'check_quality']) {
+    'check_responsive', 'check_motion', 'record', 'check_quality', 'clean_up']) {
     expect(skill).toContain(t);
     expect(readme).toContain(`\`${t}\``);
   }
@@ -21,7 +21,7 @@ test('the skill explains every reply field the agent must act on', () => {
     'pixel-twin.json', 'Motion hints', 'state', 'textEdgeAreas', 'prefers-reduced-motion', 'House style', '@property', 'isolation: isolate',
     'fetchpriority', 'loading="lazy"', 'marquee-jump', 'low-contrast',
     'Production quality', 'dangerouslySetInnerHTML', 'noopener noreferrer', 'srcset', 'font-display', 'focus-visible', 'heavy-code',
-    'lint, type check, tests and build', 'npm run preview'])
+    'lint, type check, tests and build', 'npm run preview', '.pixel-twin/scratch', '.playwright-mcp', 'Section builder', '.pixel-twin/plan.md', 'one at a time'])
     expect(skill).toContain(word);
 });
 
@@ -35,6 +35,6 @@ test('the skill names every tool the server registers', async () => {
   const { readdirSync } = await import('node:fs');
   const tools = readdirSync(path.join(__dirname, '..', 'src', 'tools')).flatMap((f) =>
     [...readFileSync(path.join(__dirname, '..', 'src', 'tools', f), 'utf8').matchAll(/registerTool\(\s*'([a-z_]+)'/g)].map((m) => m[1]));
-  expect(tools.length).toBeGreaterThanOrEqual(14);
+  expect(tools.length).toBeGreaterThanOrEqual(15);
   for (const t of tools) expect(skill).toContain(`\`${t}\``);
 });
